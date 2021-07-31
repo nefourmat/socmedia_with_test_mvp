@@ -7,12 +7,12 @@
   <div class="col-md-8 p-5">
     <div class="card">
       <div class="card-header">{% if not post %} Создание записи {% else %} Редактирование записи {% endif %}</div>
-        <div class="card-body">
-        {% for error in form.errors %}
-        <div class="alert alert-danger" role="alert">
-          {{ error }}
-        </div>
-        {% endfor %}
+      <div class="card-body">
+      {% for error in form.errors %}
+      <div class="alert alert-danger" role="alert">
+        {{ error }}
+      </div>
+      {% endfor %}
 
         <form method="POST">
           {% csrf_token %}

@@ -1,6 +1,11 @@
+from django.contrib.auth import get_user_model
 from django.test import TestCase
 
-from posts.models import Post, Group
+from posts.models import Group, Post
+
+User = get_user_model()
+
+TEST_USERNAME = 'mike'
 
 
 class PostModelTest(TestCase):
@@ -8,9 +13,10 @@ class PostModelTest(TestCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
+        cls.user = User.objects.create_user(TEST_USERNAME)
         cls.post = Post.objects.create(
-            text='Проверка создание поста'
-        )
+            text='Проверка создание поста',
+            author=cls.user)
 
     def test__str__(self):
         """Тестируем метод __str__ для класса Post"""
@@ -27,8 +33,7 @@ class GroupModelTest(TestCase):
     def setUpClass(cls):
         super().setUpClass()
         cls.group = Group.objects.create(
-            title='Проверка создание поста'
-        )
+            title='Проверка создание поста')
 
     def test__str__(self):
         """Тестируем метод __str__ для класса Group"""
