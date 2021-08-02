@@ -5,12 +5,19 @@ from posts.models import Group, Post, User
 
 TEST_USERNAME = 'mike'
 TEST_SLUG = 'test-slug'
+TEST_TEXT = 'test-text'
+TEST_TITLE = 'test-title'
+TEST_DESCRIPTION = 'test-description'
 HOMEPAGE_URL = reverse('index')
 NEW_POST_URL = reverse('new_post')
 PROFILE_URL = reverse('profile', kwargs={'username': TEST_USERNAME})
 GROUP_URL = reverse('group_posts', kwargs={'slug': TEST_SLUG})
 POST_URL = reverse('post', kwargs={'username': TEST_USERNAME, 'post_id': 1})
 LOGIN_URL = reverse('login') + '?next='
+POST_ID_KEY = 'post_id'
+POSTID_VAL = 1
+USERNAME_KEY = 'username'
+
 
 
 class URLTests(TestCase):
@@ -19,14 +26,15 @@ class URLTests(TestCase):
         super().setUpClass()
         cls.user = User.objects.create_user(TEST_USERNAME)
         cls.post = Post.objects.create(
-            text='test-text',
+            text=TEST_TEXT,
             author=cls.user)
         cls.gpoup = Group.objects.create(
-            title='test-title',
+            title=TEST_TITLE,
             slug=TEST_SLUG,
-            description='test-description')
+            description=TEST_DESCRIPTION)
         cls.post_edit = reverse(
-            'post_edit', kwargs={'username': TEST_USERNAME, 'post_id': 1})
+            'post_edit',
+            kwargs={USERNAME_KEY: TEST_USERNAME, POST_ID_KEY: POSTID_VAL})
 
     def setUp(self):
         """Создаем пользователя"""
