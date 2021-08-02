@@ -1,21 +1,25 @@
 from django import forms
-from django.contrib.auth import get_user_model
 from django.test import Client, TestCase
 from django.urls import reverse
 
-from posts.models import Post
-
-User = get_user_model()
+from posts.models import Group, Post, User
 
 HOMEPAGE_URL = reverse('index')
 NEW_POST_URL = reverse('new_post')
 LOGIN_URL = reverse('login') + '?next='
-POST_EDIT_URL = reverse('post_edit', kwargs={'username': 'mike', 'post_id': 1})
 TEST_USERNAME = 'mike'
+POST_ID_KEY = 'post_id'
+POSTID_VAL = 1
+USERNAME_KEY = 'username'
+POST_EDIT_URL = reverse(
+    'post_edit', kwargs={USERNAME_KEY: TEST_USERNAME, POST_ID_KEY: POSTID_VAL})
 POST_TEXT = 'Проверка создание поста'
 FORM_TEXT = 'Текст из формы'
 FORM_DATA_TEXT = 'text'
 NOT_AUTH_USER = 'пользователь не авторизован'
+TEST_TITLE = 'test-title'
+TEST_SLUG = 'test-slug'
+TEST_DESCRIPTION = 'test-description'
 
 
 class PostCreateForm(TestCase):
@@ -25,9 +29,14 @@ class PostCreateForm(TestCase):
         super().setUpClass()
         cls.form = PostCreateForm()
         cls.user = User.objects.create_user(TEST_USERNAME)
+        cls.gpoup = Group.objects.create(
+            title=TEST_TITLE,
+            slug=TEST_SLUG,
+            description=TEST_DESCRIPTION)
         cls.post = Post.objects.create(
             text=POST_TEXT,
-            author=cls.user)
+            author=cls.user,
+            group=cls.gpoup)
 
     def setUp(self):
         self.guest_client = Client()
@@ -38,7 +47,7 @@ class PostCreateForm(TestCase):
 
     def test_new_post_no_auth(self):
         """Попытка создания поста не автор-ым пользователем"""
-        all_posts = list(Post.objects.values_list('id'))
+        keys_posts = list(Post.objects.values_list('id'))
         posts_count = Post.objects.count()
         form_data = {
             FORM_DATA_TEXT: FORM_TEXT,
@@ -51,32 +60,25 @@ class PostCreateForm(TestCase):
             response,
             (LOGIN_URL + NEW_POST_URL))
         self.assertEqual(Post.objects.count(), posts_count)
-        self.assertEqual(list(Post.objects.values_list('id')), all_posts)
+        self.assertEqual(list(Post.objects.values_list('id')), keys_posts)
 
     def test_create_post(self):
         """Попытка создания поста автором"""
         posts_count = Post.objects.count()
         form_data = {
             FORM_DATA_TEXT: FORM_TEXT,
-            'author': self.user}
+            'author': self.user,
+            'group': self.gpoup.id}
         response = self.authorized_client.post(
             NEW_POST_URL,
             data=form_data,
             follow=True)
         self.assertRedirects(response, HOMEPAGE_URL)
         self.assertEqual(Post.objects.count(), posts_count + 1)
+        self.assertEqual(self.post.author, self.user)
+        self.assertEqual(self.post.group.id, form_data.get('group'))
 
-    def test_edit(self):
-        """Проверка редактирования поста"""
-        post = Post.objects.create(
-            text='edit',
-            author=self.user)
-        post_edit = Post.objects.filter(
-            text='edit').update(text=('edit') + 'w')
-        post.refresh_from_db()
-        self.assertNotEqual(post, post_edit)
-
-    def test_test(self):
+    def test_context(self):
         """Правильный контекст для post_edit/new_post"""
         urls = NEW_POST_URL, POST_EDIT_URL
         form_filed = {
@@ -84,8 +86,22 @@ class PostCreateForm(TestCase):
             'group': forms.fields.ChoiceField
         }
         for check_url in urls:
-            response = self.authorized_client.get(check_url)
+            response = self.authorized_client.get(
+                check_url, data=form_filed, follow=True)
             for name, form in form_filed.items():
                 with self.subTest(name=name):
                     form_field = response.context['form'].fields[name]
                     self.assertIsInstance(form_field, form)
+
+    def test_edit_post(self):
+        """Проверка редактирования поста"""
+        response_get = self.authorized_client.get(POST_EDIT_URL)
+        data_get = response_get.context['form'].fields
+        data_get['text'] = 'Измененный текст поста'
+        self.authorized_client.post(
+            POST_EDIT_URL,
+            data=data_get,
+            follow=True)
+        response = self.authorized_client.get(POST_EDIT_URL)
+        self.assertNotEqual(
+            response.context['form'].initial['text'], 'Измененный текст поста')
