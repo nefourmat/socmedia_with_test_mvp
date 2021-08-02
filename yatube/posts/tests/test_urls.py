@@ -19,7 +19,6 @@ POSTID_VAL = 1
 USERNAME_KEY = 'username'
 
 
-
 class URLTests(TestCase):
     @classmethod
     def setUpClass(cls):

@@ -1,6 +1,6 @@
 from django.test import Client, TestCase
 
-from posts.models import Group, Post, User
+from posts.models import Group, User
 
 TEST_USERNAME = 'mike'
 TEST_SLUG = 'test-slug'
