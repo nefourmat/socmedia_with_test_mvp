@@ -12,8 +12,7 @@ HOMEPAGE_URL = reverse('index')
 NEW_POST_URL = reverse('new_post')
 PROFILE_URL = reverse('profile', kwargs={'username': TEST_USERNAME})
 GROUP_URL = reverse('group_posts', kwargs={'slug': TEST_SLUG})
-POST_URL = reverse('post', kwargs={'username': TEST_USERNAME, 'post_id': 1})
-LOGIN_URL = reverse('login') + '?next='
+LOG = reverse('login') + '?next='
 POST_ID_KEY = 'post_id'
 POSTID_VAL = 1
 USERNAME_KEY = 'username'
@@ -31,9 +30,12 @@ class URLTests(TestCase):
             title=TEST_TITLE,
             slug=TEST_SLUG,
             description=TEST_DESCRIPTION)
-        cls.post_edit = reverse(
-            'post_edit',
-            kwargs={USERNAME_KEY: TEST_USERNAME, POST_ID_KEY: POSTID_VAL})
+        cls.POST_EDIT_URL = reverse('post_edit', kwargs={
+            'username': cls.user.username,
+            'post_id': cls.post.id})
+        cls.POST_URL = reverse('post', kwargs={
+            'username': cls.user.username,
+            'post_id': cls.post.id})
 
     def setUp(self):
         """Создаем пользователя"""
@@ -47,12 +49,14 @@ class URLTests(TestCase):
             [HOMEPAGE_URL, self.guest_client, 200],
             [NEW_POST_URL, self.authorized_client, 200],
             [PROFILE_URL, self.authorized_client, 200],
-            [POST_URL, self.guest_client, 200],
-            [self.post_edit, self.authorized_client, 200],
-            [self.post_edit, self.guest_client, 302]
+            [self.POST_URL, self.guest_client, 200],
+            [self.POST_EDIT_URL, self.authorized_client, 200],
+            [self.POST_EDIT_URL, self.guest_client, 302],
+            [GROUP_URL, self.guest_client, 200],
+            [self.POST_EDIT_URL, self.guest_client, 302]
         ]
         for adress, client, httpstatus in urls:
-            with self.subTest(adress=adress):
+            with self.subTest(adress=adress, client=client):
                 self.assertEqual(client.get(adress).status_code, httpstatus)
 
     def test_correct_template(self):
@@ -60,8 +64,8 @@ class URLTests(TestCase):
             [HOMEPAGE_URL, self.guest_client, 'index.html'],
             [GROUP_URL, self.guest_client, 'group.html'],
             [NEW_POST_URL, self.authorized_client, 'new_post.html'],
-            [self.post_edit, self.authorized_client, 'new_post.html'],
-            [POST_URL, self.guest_client, 'post.html'],
+            [self.POST_EDIT_URL, self.authorized_client, 'new_post.html'],
+            [self.POST_URL, self.guest_client, 'post.html'],
             [PROFILE_URL, self.guest_client, 'profile.html']
         ]
         for adress, client, template in templates_url_names:
@@ -70,8 +74,9 @@ class URLTests(TestCase):
 
     def test_correct_redirect(self):
         redirect = [
-            [NEW_POST_URL, LOGIN_URL + NEW_POST_URL, self.guest_client],
-            [self.post_edit, LOGIN_URL + self.post_edit, self.guest_client]
+            [NEW_POST_URL, LOG + NEW_POST_URL, self.guest_client],
+            [self.POST_EDIT_URL, LOG + self.POST_EDIT_URL, self.guest_client],
+            [self.POST_EDIT_URL, LOG + self.POST_EDIT_URL, self.guest_client]
         ]
         for adress, redirection, client in redirect:
             with self.subTest(adress=adress):

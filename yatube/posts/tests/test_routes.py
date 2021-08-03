@@ -1,42 +1,31 @@
-from django.test import Client, TestCase
-
-from posts.models import Group, User
+from django.test.testcases import TestCase
+from django.urls import reverse
+from posts.models import Post, User
 
 TEST_USERNAME = 'mike'
 TEST_SLUG = 'test-slug'
-TEST_TEXT = 'test-text'
-TEST_TITLE = 'test-title'
-TEST_DESCRIPTION = 'test-description'
+POST_TEXT = 'Проверка создание поста'
 
 
-class URLTests(TestCase):
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        cls.user = User.objects.create_user(TEST_USERNAME)
-        cls.gpoup = Group.objects.create(
-            title=TEST_TITLE,
-            slug=TEST_SLUG,
-            description=TEST_DESCRIPTION)
-
-    def setUp(self):
-        """Создаем пользователя"""
-        self.guest_client = Client()
-        # тут авторизованый пользователь
-        self.authorized_client = Client()
-        self.authorized_client.force_login(self.user)
-
-    def test_homepage(self):
-        """Страница / доступна любому пользователю."""
-        response = self.guest_client.get('/')
-        self.assertEqual(response.status_code, 200)
-
-    def test_group_slug(self):
-        """Страница /group/<slug>/ доступна любому пользователю."""
-        response = self.guest_client.get('/group/test-slug/')
-        self.assertEqual(response.status_code, 200)
-
-    def test_new_post(self):
-        """Страница /new/ доступна авторизованному пользователю."""
-        response = self.authorized_client.get('/new/')
-        self.assertEqual(response.status_code, 200)
+class RoutesTest(TestCase):
+    def test_url_routting(self):
+        user = User.objects.create_user(TEST_USERNAME)
+        post = Post.objects.create(
+            text=POST_TEXT,
+            author=user)
+        route_names = {
+            reverse('index'): '/',
+            reverse('new_post'): '/new/',
+            reverse('group_posts', kwargs={
+                    'slug': TEST_SLUG}): f'/group/{TEST_SLUG}/',
+            reverse('profile', kwargs={
+                    'username': TEST_USERNAME}): f'/{TEST_USERNAME}/',
+            reverse('post', kwargs={
+                    'username': user.username,
+                    'post_id': post.id}): f'/{TEST_USERNAME}/{post.id}/',
+            reverse('post_edit', kwargs={
+                    'username': user.username,
+                    'post_id': post.id}): f'/{TEST_USERNAME}/{post.id}/edit/'
+        }
+        for name, url in route_names.items():
+            self.assertEqual(name, url)

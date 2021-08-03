@@ -15,7 +15,9 @@ TEST_DESCRIPTION = 'test-description'
 HOMEPAGE_URL = reverse('index')
 GROUP_POST_URL = reverse('group_posts', kwargs={'slug': TEST_SLUG})
 PROFILE_URL = reverse('profile', kwargs={'username': TEST_USERNAME})
-POST_URL = reverse('post', kwargs={'username': TEST_USERNAME, 'post_id': 1})
+GROUP_URL = reverse('group_posts', kwargs={'slug': TEST_SLUG})
+ANOTHER_URL = reverse('group_posts', kwargs={'slug': TEST_SLUG_2})
+REMAINDER = 1
 
 
 class ViewsTests(TestCase):
@@ -23,7 +25,7 @@ class ViewsTests(TestCase):
     def setUpClass(cls):
         super().setUpClass()
         cls.user = User.objects.create_user(TEST_USERNAME)
-        cls.gpoup = Group.objects.create(
+        cls.group = Group.objects.create(
             title=TEST_TITLE,
             slug=TEST_SLUG,
             description=TEST_DESCRIPTION)
@@ -33,33 +35,55 @@ class ViewsTests(TestCase):
             description=TEST_DESCRIPTION_2)
         cls.post = Post.objects.create(
             text=TEST_TEXT,
-            group=cls.gpoup,
+            group=cls.group,
             author=cls.user)
+        cls.POST_URL = reverse('post', kwargs={
+            'username': cls.user.username,
+            'post_id': cls.post.id})
 
     def setUp(self):
         """Создаем пользователя"""
         self.guest_client = Client()
-        self.user = ViewsTests.user
         self.authorized_client = Client()
         self.authorized_client.force_login(self.user)
 
     def test_context(self):
         """Проверка контекста"""
-        urls = PROFILE_URL, GROUP_POST_URL, HOMEPAGE_URL
-        for check_url in urls:
-            response = self.guest_client.get(check_url)
-            first_object = response.context['page'][0]
-            text_0 = first_object.text
-            if self.post.author == self.user:
-                author_0 = first_object.author
-            group_0 = first_object.group
-            self.assertEqual(text_0, TEST_TEXT)
-            self.assertEqual(author_0, self.user)
-            self.assertEqual(group_0, self.post.group)
+        urls = {
+            HOMEPAGE_URL: 'page',
+            GROUP_URL: 'page',
+            PROFILE_URL: 'page',
+            self.POST_URL: 'post'
+        }
+        for url, key in urls.items():
+            with self.subTest(url=url):
+                response = self.guest_client.get(url)
+                if key == 'post':
+                    post = response.context[key]
+                else:
+                    self.assertEqual(len(response.context[key]), 1)
+                    post = response.context[key][0]
+                self.assertEqual(post.text, self.post.text)
+                self.assertEqual(post.author, self.post.author)
+                self.assertEqual(post.group, self.post.group)
 
     def test_another_group(self):
         """Пост находиться в нужной группе"""
-        self.assertNotIn(self.post, self.another_group.posts.all())
+        response = self.authorized_client.get(ANOTHER_URL)
+        self.assertNotIn(self.post, response.context['page'])
+
+    def test_context_profile(self):
+        response = self.authorized_client.get(PROFILE_URL)
+        context_group = response.context['author']
+        self.assertEqual(self.user.username, context_group.username)
+
+    def test_context_group(self):
+        response = self.authorized_client.get(GROUP_URL)
+        context_group = response.context['group']
+        self.assertEqual(self.group.title, context_group.title)
+        self.assertEqual(self.group.slug, context_group.slug)
+        self.assertEqual(self.group.description,
+                         context_group.description)
 
 
 class PaginatorViewsTest(TestCase):
@@ -67,7 +91,7 @@ class PaginatorViewsTest(TestCase):
     def setUpClass(cls):
         super().setUpClass()
         cls.user = User.objects.create_user(TEST_USERNAME)
-        for i in range(1, 11):
+        for posts in range(PAGINATOR_COUNT + REMAINDER):
             cls.post = Post.objects.create(
                 text=TEST_TEXT,
                 author=cls.user)
@@ -82,4 +106,9 @@ class PaginatorViewsTest(TestCase):
         """"Paginator выполняет свои действия"""
         response = self.authorized_client.get(HOMEPAGE_URL)
         self.assertEqual(len(
-            response.context['page'].object_list), PAGINATOR_COUNT)
+            response.context['page']), PAGINATOR_COUNT)
+
+    def test_paginator_homepage_2(self):
+        response = self.authorized_client.get(HOMEPAGE_URL + '?page=2')
+        result = len(response.context.get('page'))
+        self.assertEqual(result, REMAINDER)
