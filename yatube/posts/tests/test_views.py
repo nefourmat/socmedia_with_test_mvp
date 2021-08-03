@@ -98,17 +98,14 @@ class PaginatorViewsTest(TestCase):
 
     def setUp(self):
         self.guest_client = Client()
-        self.user = PaginatorViewsTest.user
-        self.authorized_client = Client()
-        self.authorized_client.force_login(self.user)
 
     def test_paginator_homepage(self):
         """"Paginator выполняет свои действия"""
-        response = self.authorized_client.get(HOMEPAGE_URL)
+        response = self.guest_client.get(HOMEPAGE_URL)
         self.assertEqual(len(
             response.context['page']), PAGINATOR_COUNT)
 
     def test_paginator_homepage_2(self):
-        response = self.authorized_client.get(HOMEPAGE_URL + '?page=2')
+        response = self.guest_client.get(HOMEPAGE_URL + '?page=2')
         result = len(response.context.get('page'))
         self.assertEqual(result, REMAINDER)

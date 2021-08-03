@@ -65,7 +65,7 @@ class PostCreateForm(TestCase):
     def test_create_post(self):
         """Попытка создания поста автором"""
         posts_count = Post.objects.count()
-        list_1 = set(post.pk for post in Post.objects.all())
+        old_val = set(post.pk for post in Post.objects.all())
         form_data = {
             'text': FORM_TEXT,
             'group': self.gpoup.id}
@@ -73,10 +73,10 @@ class PostCreateForm(TestCase):
             NEW_POST_URL,
             data=form_data,
             follow=True)
-        list_2 = set(post.pk for post in Post.objects.all())
-        list_3 = list(list_2 - list_1)
-        post = Post.objects.get(pk=list_3[0])
-        self.assertEqual(len(list_3), 1)
+        refresh_val = set(post.pk for post in Post.objects.all())
+        remains = list(refresh_val - old_val)
+        post = Post.objects.get(pk=remains[0])
+        self.assertEqual(len(remains), 1)
         self.assertRedirects(response, HOMEPAGE_URL)
         self.assertEqual(Post.objects.count(), posts_count + 1)
         self.assertEqual(post.text, form_data['text'])
@@ -99,19 +99,6 @@ class PostCreateForm(TestCase):
                     self.assertIsInstance(form_field, form)
 
     def test_edit_post(self):
-        """Проверка редактирования поста"""
-        response_get = self.authorized_client.get(self.POST_EDIT_URL)
-        data_get = response_get.context['form'].fields
-        data_get['text'] = 'Измененный текст поста'
-        self.authorized_client.post(
-            self.POST_EDIT_URL,
-            data=data_get,
-            follow=True)
-        response = self.authorized_client.get(self.POST_EDIT_URL)
-        self.assertNotEqual(
-            response.context['form'].initial['text'], 'Измененный текст поста')
-
-    def test(self):
         posts_count = Post.objects.count()
         form_data = {
             'text': FORM_TEXT,
